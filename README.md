@@ -3,17 +3,19 @@ Play football with your friends from the comfort of your home
 ![image](https://github.com/P0ZNYKI4/Online-Football/assets/93341398/bc8a0d51-3a35-4106-a876-c8f37783eeb6)
 
 
-# Installation
-win - pip install pymunk
+## Installation
+pip install pygame
 
-linux - pip3 install pymunk
+pip install pymunk
 
-# Step 1 Server
+## Step 1 Server
 Creating a server
 
 Open the server.py and change the ip to your own.
 
+```
 game = ServerGame("192.168.X.XX") - localHost
+```
 
 If you see this picture, the server functions
 ![image](https://github.com/P0ZNYKI4/Online-Football/assets/93341398/d17c3e7b-9e58-4347-88a7-f65e58530056)
