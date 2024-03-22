@@ -17,7 +17,7 @@ class ServerGame:
 		self.ip = ip
 		self.addr = (self.ip, 3301)
 
-		self.tcp_socket = socket(AF_INET, SOCK_STREAM)
+		self.udp_socket = socket(AF_INET, SOCK_DGRAM)
 
 		self.players = dict()
 
@@ -29,78 +29,137 @@ class ServerGame:
 
 		self.receiving_messages = dict()
 
-		th = Thread(target=self.connection)
+		self.remove_players = []
+
+		th = Thread(target=self.receiving_message)
 		th.daemon = True
 		th.start()
 		
 
 	def connection(self):
 		print("server create")
-		self.tcp_socket.bind(self.addr)
-		self.tcp_socket.listen(6)
+		#self.tcp_socket.bind(self.addr)
+		#self.tcp_socket.listen(6)
+		self.udp_socket.bind(self.addr)
 
 		while self.server_online:
-			conn, addr = self.tcp_socket.accept()
+			#conn, addr = self.tcp_socket.accept()
+
+			messages, addr = self.udp_socket.recvfrom(1024)#.decode()
+
+			messages = messages.decode()
+
 			new_player = Player([100, 100])
 
-			messages = conn.recv(1024).decode()
-			new_player.skin = messages
+			#messages = list(conn.recv(1024).decode())
+			new_player.skin = messages[0]
 
-			self.players[conn] = new_player
+			new_player.create_ball(space)
+
+			#self.players[conn] = new_player
+			self.players[addr] = new_player
+
 			print("client accept: ", addr)
 
-			pl = Thread(target=self.receiving_message, args=((conn, addr)))
+			#pl = Thread(target=self.receiving_message, args=((conn, addr)))
+			#pl.daemon = True
+			#pl.start()
+			pl = Thread(target=self.receiving_message)
 			pl.daemon = True
 			pl.start()
 
+	def receiving_message(self):
 
-	def receiving_message(self, conn, addr):
+		print("Приём сообщений")
 
-		print("Ожидаю")
+		self.udp_socket.bind(self.addr)
+		while True:
 
-		connect = True
-
-		while connect:
 
 			try:
-				messages = conn.recv(1024).decode()
+				messages, addr = self.udp_socket.recvfrom(1024)
 			except ConnectionResetError:
 
-				if conn in self.players:
-					space.remove(self.players[conn].shape)
-					self.players.pop(conn, None)
+				if addr in self.players:
+					print("Пользователь отключился, удаляю его с поля")
+					
+					self.remove_players.append(addr)
 
-				connect = False
-				messages = ""
+					while len(self.remove_players) != 0:
+						...
+
+					message = f"| {addr[1]} q"
+					for addr in self.players:
+						self.send_message(addr, message)
+				continue
+
+			messages = messages.decode()
+
+			if not addr in self.players:
+
+				skin = messages
+
+				new_player = Player([720, 250] if skin in right_command else [140, 250])
+
+				new_player.skin = messages
+
+				print(new_player.skin)
+
+				new_player.create_ball(space)
+				self.players[addr] = new_player
+				message = f"{addr[1]}"
+				self.send_message(addr, message)
+
+				print("client accept: ", addr)
+
+				continue
+
 			
-			if messages == "w_d":
-				self.players[conn].key_w = True
-			elif messages == "a_d":
-				self.players[conn].key_a = True
-			elif messages == "s_d":
-				self.players[conn].key_s = True
-			elif messages == "d_d":
-				self.players[conn].key_d = True
+			messages = messages.split()
 
-			elif messages == "w_u":
-				self.players[conn].key_w = False
-			elif messages == "a_u":
-				self.players[conn].key_a = False
-			elif messages == "s_u":
-				self.players[conn].key_s = False
-			elif messages == "d_u":
-				self.players[conn].key_d = False
 
-			#print(messages)
+			edit = False
+			for i in messages:
 
-	def send_message(self, conn, message):
-		try:
-			conn.send(str.encode(message))
-		except ConnectionResetError:
+				if i == "w_d":
+					self.players[addr].key_w = True; edit = True
+				elif i == "a_d":
+					self.players[addr].key_a = True; edit = True
+				elif i == "s_d":
+					self.players[addr].key_s = True; edit = True
+				elif i == "d_d":
+					self.players[addr].key_d = True; edit = True
 
-			if conn in self.players:
-				space.remove(self.players[conn].shape)
-				self.players.pop(conn, None)
+				elif i == "w_u":
+					self.players[addr].key_w = False; edit = True
+				elif i == "a_u":
+					self.players[addr].key_a = False; edit = True
+				elif i == "s_u":
+					self.players[addr].key_s = False; edit = True
+				elif i == "d_u":
+					self.players[addr].key_d = False; edit = True
+
+			# send all
+			if edit:
+				pl = self.players[addr]
+
+				pl.animation()
+
+				message = f" | ({addr[1]},{self.get_obj_data(pl.body)},'{pl.skin}') l "
+
+				for addr in self.players:
+					self.send_message(addr, message)
+
+	def get_obj_data(self, body):
+		txt = ""
+		txt += f"{body.position.x:.2f},{body.position.y:.2f},"
+		txt += f"{body.velocity.x:.2f},{body.velocity.y:.2f},"
+		txt += f"{body.angle:.2f},"
+		txt += f"{body.rotation_vector.x:.2f},{body.rotation_vector.y:.2f}"
+		return txt
+
+	def send_message(self, addr, message):
+		self.udp_socket.sendto(message.encode(), addr)
 
 
 
@@ -109,7 +168,7 @@ class Player:
 	def __init__(self, coord):
 		self.coord = coord
 
-		self.segment_add = False
+		#self.segment_add = False
 
 		self.speed = 5
 
@@ -199,10 +258,22 @@ if __name__ == "__main__":
 	shape.friction = 0.9
 	space.add(body, shape)
 
+	old_velocity_ball = (body.velocity.x, body.velocity.y)
+
 	score = [0, 0]
 
 	bad_internet_test = False
+	
+	'''
+	"d" Даня
+	"p" Паша
+	"t" Тимофей
+	"k" Катя
+	"a" Таня
+	"i" Дима
+	'''
 
+	right_command = ["i", "d"]
 
 	loop = 1
 	while loop:
@@ -216,26 +287,16 @@ if __name__ == "__main__":
 
 		screen.blit(background, (0, 0))
 
-		message = f" | (({body.position.x:.2f},{body.position.y:.2f},'m',{body.angle:.2f}),"
-
 		for key in game.players:
 			player = game.players[key]
 
-			if not player.segment_add:
-				player.segment_add = True
-				player.create_ball(space)
-
 			player.animation()
 
-			message += f"({player.body.position.x:.2f},{player.body.position.y:.2f},'{player.skin}',{player.body.angle:.2f}),"
+		old_velocity_ball = (body.velocity.x, body.velocity.y)
+		message = f" | (-100,{game.get_obj_data(body)},'m') l "
 
-		message += ") l "
-
-
-		if not (bad_internet_test and randint(0, 100) > 30):
-			for conn in game.players:
-				game.send_message(conn, message)
-
+		for conn in game.players:
+			game.send_message(conn, message)
 
 		score_send = False
 
@@ -253,8 +314,25 @@ if __name__ == "__main__":
 			for conn in game.players:
 				game.send_message(conn, message)
 
+			for addr in game.players:
+				pl = game.players[addr]
+
+				pl.body.position = [720, 250] if pl.skin in right_command else [140, 250]
+
+				message = f" | ({addr[1]},{game.get_obj_data(pl.body)},'{pl.skin}') l "
+
+				for addr in game.players:
+					game.send_message(addr, message)
+
+
+		for addr in game.remove_players:
+			space.remove(game.players[addr].shape)
+			game.players.pop(addr, None)
+
+			game.remove_players.remove(addr)
+
+
 		space.step(1 / 60)
 		space.debug_draw(draw_options)
 
 		pygame.display.flip()
-

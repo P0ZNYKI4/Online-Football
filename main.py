@@ -13,12 +13,17 @@ font = pygame.font.Font("5.ttf", 100)
 score = font.render("", False, (0, 0, 0))
 
 images = {
-	"m": pygame.image.load("m.png").convert_alpha(),
+	"a": pygame.image.load("a.png").convert_alpha(),
 	"d": pygame.image.load("d.png").convert_alpha(),
-	"p": pygame.image.load("p.png").convert_alpha(),
-	"t": pygame.image.load("t.png").convert_alpha(),
+	"e": pygame.image.load("e.png").convert_alpha(),
+	"i": pygame.image.load("i.png").convert_alpha(),
 	"k": pygame.image.load("k.png").convert_alpha(),
-	"a": pygame.image.load("a.png").convert_alpha(),	
+	"m": pygame.image.load("m.png").convert_alpha(), # Не использовать как скин
+	"n": pygame.image.load("n.png").convert_alpha(),
+	"p": pygame.image.load("p.png").convert_alpha(),
+	"r": pygame.image.load("r.png").convert_alpha(),
+	"s": pygame.image.load("s.png").convert_alpha(),
+	"t": pygame.image.load("t.png").convert_alpha(),	
 }
 
 my_name = "a"
@@ -26,7 +31,7 @@ my_name = "a"
 online = Online("192.168.1.70")
 online.connection(my_name)
 
-obj = tuple()
+obj = Objects(images, online, font)
 
 loop = 1
 
@@ -36,49 +41,37 @@ while loop:
 
 	for ev in pygame.event.get():
 
+		obj.event(ev)
+
 		if ev.type == pygame.KEYDOWN:
 
 			if ev.key == pygame.K_w:
-				online.send("w_d")
+				online.send(" w_d ")
 			elif ev.key == pygame.K_a:
-				online.send("a_d")
+				online.send(" a_d ")
 			elif ev.key == pygame.K_s:
-				online.send("s_d")
+				online.send(" s_d ")
 			elif ev.key == pygame.K_d:
-				online.send("d_d")
+				online.send(" d_d ")
 
 		if ev.type == pygame.KEYUP:
 
 			if ev.key == pygame.K_w:
-				online.send("w_u")
+				online.send(" w_u ")
 			elif ev.key == pygame.K_a:
-				online.send("a_u")
+				online.send(" a_u ")
 			elif ev.key == pygame.K_s:
-				online.send("s_u")
+				online.send(" s_u ")
 			elif ev.key == pygame.K_d:
-				online.send("d_u")
+				online.send(" d_u ")
 
 		if ev.type == pygame.QUIT:
 			loop = 0
 
 	screen.blit(background, (0, 0))
 
-	messages = online.receiving_message()
-
-	for i in messages:
-
-		if i[0] == "l":
-			obj = i[1]
-		elif i[0] == "score":
-			score = font.render(i[1], False, (0, 0, 0))
-	
-	screen.blit(score, score.get_rect(center=(450, 50)))
-
-	for x, y, skin, angle in obj:
-		img = pygame.transform.rotate(images[skin], -angle * 20)
-		screen.blit(img, img.get_rect(center=(x, y)))
-
-
+	obj.animation()
+	obj.draw(screen)
 
 	pygame.display.flip()
 
