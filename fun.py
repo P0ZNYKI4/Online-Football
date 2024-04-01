@@ -26,11 +26,8 @@ class Online:
 		self.ID = int(message)
 		print(f"Мой уникальный Id: {self.ID}")
 
-
-
 	def send(self, message):
 		self.udp_socket.sendto(message.encode(), self.addr)
-
 
 	def receiving_message(self):
 		return self.decoder.get(self.udp_socket.recv(1024).decode())
@@ -56,9 +53,12 @@ class DecodingMessage:
 			if txt == "l":
 				self.join_status = False
 
+				if self.long_txt[0] != "(":
+					self.long_txt = self.long_txt[5:]
+
 				msg = ("l", eval(self.long_txt))
 				message.append(msg)
-
+			
 				self.long_txt = ""
 				
 			elif txt == "z":
@@ -73,9 +73,12 @@ class DecodingMessage:
 			elif txt == "q":
 				self.join_status = False
 
+				
+
 				msg = ["quit", eval(self.long_txt)]
-				msg[1] = f"{msg[1][0]}       {msg[1][1]}"
 				message.append(msg)
+
+				print("Удалил", self.long_txt)
 
 				self.long_txt = ""
 
@@ -174,6 +177,7 @@ class Objects:
 		self.space.add(self.body, self.shape)
 
 		self.space_add_player = []
+		self.space_remove_player = []
 		self.score = pygame.Surface((0, 0))
 		self.score_tick = .0
 
@@ -247,6 +251,10 @@ class Objects:
 
 			self.space_add_player.remove(data)
 
+		for addr in self.space_remove_player:
+			self.objects.pop(addr)
+			self.space_remove_player.remove(addr)
+
 		for key in self.objects:
 			obj = self.objects[key]
 			obj.edit_velocity(obj.old_velocity[0], obj.old_velocity[1])
@@ -292,8 +300,8 @@ class Objects:
 					self.score = self.font.render(i[1], False, (0, 0, 0))
 
 				elif i[0] == "quit":
-					print(i[1])
-					print(self.objects)
+					if i[1] in self.objects:
+						self.space_remove_player.append(i[1])
 
 	def event(self, ev):
 

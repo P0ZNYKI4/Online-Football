@@ -30,6 +30,7 @@ class ServerGame:
 		self.receiving_messages = dict()
 
 		self.remove_players = []
+		self.add_players = []
 
 		th = Thread(target=self.receiving_message)
 		th.daemon = True
@@ -73,26 +74,13 @@ class ServerGame:
 		print("Приём сообщений")
 
 		self.udp_socket.bind(self.addr)
+
 		while True:
 
+			addr = ""
 
-			try:
-				messages, addr = self.udp_socket.recvfrom(1024)
-			except ConnectionResetError:
-
-				if addr in self.players:
-					print("Пользователь отключился, удаляю его с поля")
-					
-					self.remove_players.append(addr)
-
-					while len(self.remove_players) != 0:
-						...
-
-					message = f"| {addr[1]} q"
-					for addr in self.players:
-						self.send_message(addr, message)
-				continue
-
+			messages, addr = self.udp_socket.recvfrom(1024)
+			
 			messages = messages.decode()
 
 			if not addr in self.players:
@@ -100,15 +88,10 @@ class ServerGame:
 				skin = messages
 
 				new_player = Player([720, 250] if skin in right_command else [140, 250])
-
 				new_player.skin = messages
 
-				print(new_player.skin)
-
-				new_player.create_ball(space)
-				self.players[addr] = new_player
-				message = f"{addr[1]}"
-				self.send_message(addr, message)
+				if not (new_player, addr) in self.add_players:
+					self.add_players.append((new_player, addr))
 
 				print("client accept: ", addr)
 
@@ -138,6 +121,19 @@ class ServerGame:
 					self.players[addr].key_s = False; edit = True
 				elif i == "d_u":
 					self.players[addr].key_d = False; edit = True
+
+				elif i == "q":
+					print("Пользователь отключился, удаляю его с поля")
+
+					self.remove_players.append(addr)
+
+					while len(self.remove_players) != 0:
+						...
+
+					message = f" | ({addr[1]}) q "
+					print("Сообщение для удаления:", message)
+					for addr in self.players:
+						self.send_message(addr, message)
 
 			# send all
 			if edit:
@@ -217,7 +213,7 @@ class Player:
 if __name__ == "__main__":
 
 
-	game = ServerGame("192.168.1.70")
+	game = ServerGame("192.168.1.69")
 
 	screen = pygame.display.set_mode((900, 500))
 	clock = pygame.time.Clock()
@@ -287,6 +283,27 @@ if __name__ == "__main__":
 
 		screen.blit(background, (0, 0))
 
+		
+
+		for data in game.add_players:
+			new_player, addr = data
+			new_player.create_ball(space)
+			game.players[addr] = new_player
+			message = f"{addr[1]}"
+			game.send_message(addr, message)
+
+			print("client add: ", addr)
+
+			game.add_players.remove(data)
+
+		for addr in game.remove_players:
+			space.remove(game.players[addr].shape)
+			game.players.pop(addr, None)
+			game.remove_players.remove(addr)
+
+		#if len(game.players) != 0:
+		#	print(game.players)
+
 		for key in game.players:
 			player = game.players[key]
 
@@ -300,10 +317,12 @@ if __name__ == "__main__":
 
 		score_send = False
 
-		if body.position.x > 780 and 188 <= body.position.y <= 320:
+		if body.position.x > 759 and 188 <= body.position.y <= 320:
 			score[0] += 1; score_send = True
-		elif body.position.x < 90 and 188 <= body.position.y <= 320:
+		elif body.position.x < 119 and 188 <= body.position.y <= 320:
 			score[1] += 1; score_send = True
+
+		#print(pygame.mouse.get_pos())
 
 		if score_send:
 			body.position = (900 / 2, 500 / 2)
@@ -325,11 +344,8 @@ if __name__ == "__main__":
 					game.send_message(addr, message)
 
 
-		for addr in game.remove_players:
-			space.remove(game.players[addr].shape)
-			game.players.pop(addr, None)
+		
 
-			game.remove_players.remove(addr)
 
 
 		space.step(1 / 60)

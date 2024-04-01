@@ -26,9 +26,9 @@ images = {
 	"t": pygame.image.load("t.png").convert_alpha(),	
 }
 
-my_name = "a"
+my_name = "n"
 
-online = Online("192.168.1.70")
+online = Online("192.168.1.69")
 online.connection(my_name)
 
 obj = Objects(images, online, font)
@@ -66,6 +66,7 @@ while loop:
 				online.send(" d_u ")
 
 		if ev.type == pygame.QUIT:
+			online.send(" q ")
 			loop = 0
 
 	screen.blit(background, (0, 0))
